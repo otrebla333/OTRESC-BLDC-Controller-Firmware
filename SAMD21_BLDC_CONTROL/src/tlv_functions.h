@@ -10,8 +10,13 @@
 #define TLV_FUNCTIONS_H_
 
 
-#include <stdbool.h>
+#include <stdint.h>
+#include <stddef.h>
+#include <stdlib.h>
+#include <math.h>
+#include <arm_math.h>
 
+#include "tlv_i2c.h"
 
 #define TLV_POWER_PIN				PIN_PB23
 #define TLV_I2C_SERCOM				SERCOM5
@@ -21,8 +26,10 @@
 #define TLV_I2C_SCL_PINMUX			PINMUX_PB17C_SERCOM5_PAD1
 
 
-/*! @brief Starts the TLV sensor
-TLV config + TLV reset
+
+/*! @brief Initializes TLV sensor
+
+    Sets configuration and performs a reset of the device
 */
 void tlv_init(void);
 
@@ -30,17 +37,24 @@ void tlv_init(void);
 
     At start or after ADC hang up is sometimes convenient to reset the IC to ensure that it's working.
 */
-bool tlv_reset(void);
+uint8_t tlv_reset(void);
 
-/*! @brief Power down the TLV sensor
+/*! @brief Powers down the TLV sensor
 */
 void tlv_disable(void);
 
-/*! @brief Reads TLV sensor data
+/*! @brief Starts reading the TLV sensor data
 
-	Reads TLV in Master Mode and calculates the angle, speed, direction and rev_count of the spinning shaft
+	Starts the reading process job.
 */	
-bool tlv_read (void);
+void tlv_read (void);
+
+
+uint8_t tlv_check_data_sanity(void);
+
+/*! @brief Calculates the angle, speed and rev_count
+*/
+void tlv_calculate_angle(void);
 
 /*! @brief Configures the Magnetic sensor registers
 
@@ -51,33 +65,37 @@ bool tlv_read (void);
 	@param		lp_period Low Power Period
 	@param		array Initial data read to write with the selected configuration
 */
-bool tlv_write (bool intscl, bool fast, bool low, bool temp, bool lp_period,unsigned char array[]);
+uint8_t tlv_write (uint8_t intscl, uint8_t fast, uint8_t low, uint8_t temp, uint8_t lp_period, uint8_t array[]);
 
 /*! @brief Returns the angle of the shaft
 */
-float tlv_angle(void);
+float32_t tlv_angle(void);
 
 /*! @brief Returns the speed of the shaft
 */
-float tlv_speed(void);
+float32_t tlv_speed(void);
 
 /*! @brief Returns the direction of the shaft
 
 	CW = -1 ; CCW = 1 ; stop = 0
 */
-signed int tlv_direction(void);
+int8_t tlv_direction(void);
 
 /*! @brief Returns the rev_count of the shaft
 */
-signed int tlv_rev_count(void);
+int16_t tlv_rev_count(void);
 
 /*! @brief Faster Atan Approximation
+
+Source: https://www.dsprelated.com/showarticle/1052.php
+Atan approximation graph: https://graphsketch.com/?eqn1_color=1&eqn1_eqn=atan(x)&eqn2_color=2&eqn2_eqn=&eqn3_color=3&eqn3_eqn=(pi%2F4%20%2B%200.273(1%20-%20mod(x)))*x&eqn4_color=4&eqn4_eqn=&eqn5_color=5&eqn5_eqn=&eqn6_color=6&eqn6_eqn=&x_min=-2.5&x_max=2.5&y_min=-1.57&y_max=1.57&x_tick=.1&y_tick=.1&x_label_freq=5&y_label_freq=5&do_grid=0&do_grid=1&bold_labeled_lines=0&bold_labeled_lines=1&line_width=4&image_w=850&image_h=525
+
 */
-float ApproxAtan(float z);
+float32_t ApproxAtan(float32_t z);
 
 /*! @brief Atan2 Approximation
 */
-float ApproxAtan2(float y, float x);
+float32_t ApproxAtan2(float32_t y, float32_t x);
 
 
 

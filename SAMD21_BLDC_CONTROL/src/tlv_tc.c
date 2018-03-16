@@ -15,23 +15,9 @@ struct tc_module tc4_instance;
 void tlv_tc_callback_to_change_duty_cycle(
 struct tc_module *const module_inst)
 {
-	//if(tlv_read()) tlv_reset();
-	//for(int i=0; i<60000; i++);
-	static uint8_t error_count = 0;
-	//port_pin_toggle_output_level(PIN_PB30);
-	uint8_t error = tlv_read();
-	//port_pin_set_output_level(PIN_PB30, !error);
-	error_count = error_count + error;
-	if (error_count > 10){
-		tlv_reset();
-		for(int i=0; i<60000; i++){
-			for(int i=0; i<10; i++);
-		}
-		error_count = 0;
-		port_pin_set_output_level(PIN_PB30, false);
-	}
-	
-	
+
+	tlv_read();
+
 }
 //! [callback_funcs]
 

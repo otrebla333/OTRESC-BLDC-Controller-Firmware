@@ -13,21 +13,20 @@
 #include <stdint.h>
 #include <port.h>
 
-#define TLV_POWER_PIN				PIN_PB23
-#define TLV_I2C_SERCOM				SERCOM5
-#define TLV_I2C_SDA_PIN				PIN_PB16	
-#define TLV_I2C_SDA_PINMUX			PINMUX_PB16C_SERCOM5_PAD0
-#define TLV_I2C_SCL_PIN				PIN_PB17	
-#define TLV_I2C_SCL_PINMUX			PINMUX_PB17C_SERCOM5_PAD1
-
 // From module: SERCOM I2C - Master Mode I2C (Callback APIs)
 #include <i2c_master.h>
 #include <i2c_master_interrupt.h>
 
+#include "tlv_functions.h"
+
+#define TLV_POWER_PIN				PIN_PB23
+#define TLV_I2C_SERCOM				SERCOM5
+#define TLV_I2C_SDA_PIN				PIN_PB16
+#define TLV_I2C_SDA_PINMUX			PINMUX_PB16C_SERCOM5_PAD0
+#define TLV_I2C_SCL_PIN				PIN_PB17
+#define TLV_I2C_SCL_PINMUX			PINMUX_PB17C_SERCOM5_PAD1
 
 void tlv_i2c_configure_callbacks(void);
-
-
 
 /*! @brief Configure the I2C bus pins, baudrate, GLCK.. for the TLV sensor
 */
@@ -42,7 +41,7 @@ void tlv_i2c_disable(void);
 	@param		data_i2c Bytes to read from the bus
 	@param		array[] Array to store the read values
 */
-bool tlv_i2c_read(uint16_t address, uint16_t data_size, uint8_t array[]);
+uint8_t tlv_i2c_read(uint16_t address, uint16_t data_size, uint8_t array[]);
 
 
 /*! @brief Writes to the i2c bus
@@ -53,5 +52,7 @@ bool tlv_i2c_read(uint16_t address, uint16_t data_size, uint8_t array[]);
 */
 bool tlv_i2c_write(uint16_t address, uint16_t data_size, uint8_t array[]);
 
+
+uint8_t tlv_i2c_check_status(void);
 
 #endif /* TLV_I2C_H_ */

@@ -27,10 +27,11 @@ static uint8_t wr_buffer_reversed[DATA_LENGTH] = {
 static uint8_t rd_buffer[DATA_LENGTH];
 //! [packet_data]
 
+
 //! [address]
 //#define SLAVE_ADDRESS 0x1F
 void tlv_i2c_read_callback(struct i2c_master_module *const module);
-void tlv_i2c_write_callback(struct i2c_master_module *const module);
+void tlv_i2c_error_callback(struct i2c_master_module *const module);
 //! [packet_glob]
 struct i2c_master_packet wr_packet;
 struct i2c_master_packet wr_packet_reset;
@@ -60,6 +61,8 @@ void tlv_i2c_configure(void)
 	config_i2c_master.generator_source = GCLK_GENERATOR_1;
 	config_i2c_master.pinmux_pad0    = TLV_I2C_SDA_PINMUX;
 	config_i2c_master.pinmux_pad1    = TLV_I2C_SCL_PINMUX;
+	
+	config_i2c_master.scl_low_timeout = true;
 	//! [conf_change]
 
 	/* Initialize and enable device with config */
@@ -76,24 +79,21 @@ void tlv_i2c_configure(void)
 	
 }
 //! [initialize_i2c]
-volatile static uint8_t read_callback_count = 0xF0;
-void tlv_i2c_read_callback(struct i2c_master_module *const module)
-{
-	port_pin_toggle_output_level(PIN_PB30);
-	read_callback_count = read_callback_count + 1;
-	i2c_master_read_packet_job(&i2c_master_instance, &rd_packet);
 
+	void tlv_i2c_read_callback(struct i2c_master_module *const module)
+{
+		tlv_calculate_angle();
+	
 }
 
+
 volatile static uint8_t write_callback_count = 0xF0;
-void tlv_i2c_write_callback(struct i2c_master_module *const module)
+	void tlv_i2c_error_callback(struct i2c_master_module *const module)
 {
-	port_pin_toggle_output_level(PIN_PB30);
-	write_callback_count = write_callback_count + 1;
+	tlv_reset();
 	for (int i = 0; i<60000 ; i++){
 		for (int i = 0; i<2 ; i++);
 	}
-	i2c_master_read_packet_job(&i2c_master_instance, &rd_packet);
 }
 
 
@@ -102,18 +102,20 @@ void tlv_i2c_configure_callbacks(void)
 	///* Register callback function. */
 	//! [callback_reg]
 	i2c_master_register_callback(&i2c_master_instance, tlv_i2c_read_callback,
-	(enum i2c_master_callback) (I2C_MASTER_CALLBACK_READ_COMPLETE));
+		(enum i2c_master_callback) (I2C_MASTER_CALLBACK_READ_COMPLETE));
 	//! [callback_reg]
-		//! [callback_reg]
-	//i2c_master_register_callback(&i2c_master_instance, tlv_i2c_write_callback,
-			//I2C_MASTER_CALLBACK_WRITE_COMPLETE);
+	
 	//! [callback_reg]
+	i2c_master_register_callback(&i2c_master_instance, tlv_i2c_error_callback,
+		(enum i2c_master_callback) (I2C_MASTER_CALLBACK_ERROR));
+	//! [callback_reg]
+	
 	//! [callback_en]
 	i2c_master_enable_callback(&i2c_master_instance,
-	(enum i2c_master_callback) (I2C_MASTER_CALLBACK_READ_COMPLETE));
+		(enum i2c_master_callback) (I2C_MASTER_CALLBACK_READ_COMPLETE));
 	//
-	//i2c_master_enable_callback(&i2c_master_instance,
-			//I2C_MASTER_CALLBACK_WRITE_COMPLETE);
+	i2c_master_enable_callback(&i2c_master_instance,
+		(enum i2c_master_callback) (I2C_MASTER_CALLBACK_ERROR));
 	//! [callback_en]
 }
 
@@ -132,17 +134,20 @@ void tlv_i2c_disable(void)
 	@param		data_i2c Bytes to read from the bus
 	@param		array[] Array to store the read values
 */
-bool tlv_i2c_read(uint16_t address, uint16_t data_size, uint8_t array[])
+static uint8_t i2c_error_flag = 0 ;
+ uint8_t tlv_i2c_read(uint16_t address, uint16_t data_size, uint8_t array[])
 {
+	//static uint8_t i2c_error_flag = 0 ;
 	
 	rd_packet.address = address;
 	rd_packet.data_length = data_size;
 	rd_packet.data = array;
 	
-	//if((i2c_master_read_packet_wait(&i2c_master_instance, &rd_packet)) != STATUS_OK) return 1;
 	i2c_master_read_packet_job(&i2c_master_instance, &rd_packet);
+
 	return 0;
 }
+
 
 
 /*! @brief Reads the i2c bus
@@ -162,3 +167,5 @@ bool tlv_i2c_write(uint16_t address, uint16_t data_size, uint8_t array[])
 	return 0;
 	
 }
+
+

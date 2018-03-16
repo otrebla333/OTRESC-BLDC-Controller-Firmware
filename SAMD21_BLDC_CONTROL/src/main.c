@@ -147,9 +147,9 @@ int main(void)
 
 	config_led();
 	
-	//drv_tcc0_configure();
-	//drv_tcc2_configure();
-	//drv_tcc2_configure_callbacks();
+	drv_tcc0_configure();
+	drv_tcc2_configure();
+	drv_tcc2_configure_callbacks();
 	
 	
 
@@ -166,13 +166,14 @@ int main(void)
 				//drv_config_pwm_mode(DRV_PWM_MODE_1INPUT);
 				//drv_enable();
 				tlv_read();
-				for (int i = 0; i<60000 ; i++){
-					for (int i = 0; i<1 ; i++);
-				}
+				
+				port_pin_set_output_level(LED_0_PIN,false);
+				for (int i = 0; i<20000 ; i++);
 				//! [light_up]
 			}
 			else
 			{
+				port_pin_set_output_level(LED_0_PIN,true);
 				//port_pin_set_output_level(LED_0_PIN, drv_fault());
 				//port_pin_set_output_level(LED_0_PIN, LED0_ACTIVE);
 				//drv_disable();

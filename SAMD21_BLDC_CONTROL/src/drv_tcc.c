@@ -42,8 +42,8 @@ void drv_tcc2_callback(
 		if (angle_test > PI_1) angle_test = -PI_1;
  		else if (angle_test < (-PI_1)) angle_test = PI_1;
 		LED_On(LED0_PIN);
-		drv_set_position_rad(0);
-		//tcc2_sinusoidal_waveform(0, duty_cycle_2);
+		//drv_set_position_rad(0);
+		tcc2_sinusoidal_waveform(angle_test, duty_cycle_2);
 		LED_Off(LED0_PIN);
 
 }
