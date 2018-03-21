@@ -12,8 +12,12 @@
 #define TCC0_PERIOD		0x007F
 #define TCC2_PERIOD		0x0020
 
+#define PI_x2			6.28319f
 #define PI_1			3.14156f
 #define PI_2			1.57079f
+#define PI_3_5			0.8976f
+#define PI_7			0.4488f
+#define PI_14			0.2244f
 
 //! [module_inst]
 struct tcc_module tcc0_instance;
@@ -21,52 +25,159 @@ struct tcc_module tcc2_instance;
 //! [module_inst]
 int8_t drv_direction = -1;
 
-volatile float angle_test = 0.0f;
+volatile float angle_desired_global = 0.0f;
+float32_t angle_rad_elec_global = 0.0f;
+volatile uint8_t duty_cycle_global = 0x00;
+volatile uint8_t duty_cycle_global_max = 0x77;
+volatile float32_t speed_rad_global = 0x0000;
+uint8_t drv_is_ready = 0;
+
+void drv_div_test(void);
+
+
 volatile static float32_t t_step = 0.0f;
 //! [callback_funcs]
 void drv_tcc2_callback(
 	struct tcc_module *const module_inst)
 {
-		static int i = 0;
-		static int duty_cycle_2 = 0x3F;
-		if (i >600){
-			i = 0;
-			t_step = t_step + 0.005;
-			if (t_step > 0.6f) t_step = 0.6f;
-		}
-		else i++;
 		
-
-		
-		angle_test = angle_test + t_step;
-		if (angle_test > PI_1) angle_test = -PI_1;
- 		else if (angle_test < (-PI_1)) angle_test = PI_1;
-		LED_On(LED0_PIN);
-		//drv_set_position_rad(0);
-		tcc2_sinusoidal_waveform(angle_test, duty_cycle_2);
-		LED_Off(LED0_PIN);
+	if(drv_is_ready)
+	{
+		drv_set_position_rad(0.0f);
+		drv_elec_sinusoidal_waveform(angle_rad_elec_global, duty_cycle_global);
+	}
+	else
+	{
+		drv_set_speed_rad(speed_rad_global);
+		drv_elec_sinusoidal_waveform(angle_rad_elec_global,duty_cycle_global);
+	}
 
 }
 
-volatile static uint8_t duty_cycle_test = 0;
-volatile float diff_rad = 0;
+uint8_t drv_div7_angle(float32_t angle_to_divide)
+{
+	static float32_t angle_to_divide_ant = 0;
+	uint8_t div_result;
+	static uint8_t div_result_ant;
+	
+	if(angle_to_divide != angle_to_divide_ant){
+		div_result = (int)((angle_to_divide + PI_1) / PI_3_5);
+		angle_to_divide_ant = angle_to_divide;
+		div_result_ant = div_result;
+		return div_result;
+	}
+	return div_result_ant;
+}
+
+float32_t rad_to_rad_elec(float32_t angle_rad)
+{
+	float32_t angle_rad_elec = 0;
+	angle_rad_elec = ((angle_rad + PI_1) - (PI_3_5 * drv_div7_angle(angle_rad))) * 7;
+	return angle_rad_elec;
+	
+}
+
+
+
+	volatile int16_t duty_cycle_PID = 0;
+	float32_t error_rad = 0;
+	volatile static float32_t error_rad_ant = 0.0f;
+	volatile static float32_t integral_rad = 0.0f;
+	volatile float32_t derivative_rad = 0.0f;
+	volatile float32_t next_angle_elec = 0.0f;
 void drv_set_position_rad(float32_t desired_position)
 {
-	const float Kp = 55;
+	const float32_t Kp = 100;
+	const float32_t Kd =  10000;
+	const float32_t Ki = 0.15;
 	
-	diff_rad = (desired_position - tlv_angle());
-	if(diff_rad > 0) drv_direction = 1;
-	else if (diff_rad < 0) drv_direction = -1;
-	duty_cycle_test = (uint8_t)(diff_rad * Kp * drv_direction);
-	//drv_set_duty_cycle(duty_cycle_test);
-	tcc2_sinusoidal_waveform(desired_position, duty_cycle_test);
+	const float32_t max_speed_step = 0.2f;
+	const float32_t integral_rad_max = 400;
+	const int16_t duty_cycle_min = 0x30;
+
+	float32_t actual_position = tlv_angle();
+	error_rad = (desired_position - actual_position);
+	integral_rad = integral_rad + error_rad;
+	if (integral_rad > integral_rad_max) integral_rad = integral_rad_max;
+	else if (integral_rad < - integral_rad_max)  integral_rad = - integral_rad_max;
 	
+	derivative_rad = error_rad - error_rad_ant;
+	error_rad_ant = error_rad;
+	//Limits the max_step
+	if(error_rad > 0) 
+	{
+		drv_direction = 1;
+		if (error_rad > max_speed_step) desired_position = actual_position + max_speed_step;
+		else desired_position = actual_position + error_rad;
+	}
+	else if (error_rad < 0) 
+	{
+		drv_direction = -1;
+		if (error_rad < (max_speed_step * (-1))) desired_position = actual_position - max_speed_step;
+		else desired_position = actual_position + error_rad;
+	}
+	
+	
+	//duty_cycle_PID = (int16_t)((error_rad * Kp));
+	duty_cycle_PID = (int16_t)(((error_rad * Kp) + (Kd * derivative_rad)));
+	//duty_cycle_PID = ((Kp * error_rad) + (Ki * integral_rad) + (Kd * derivative_rad));
+	
+	if (duty_cycle_PID < 0) duty_cycle_PID =  ~duty_cycle_PID;
+	duty_cycle_PID = duty_cycle_PID + duty_cycle_min;
+	//else duty_cycle_PID = duty_cycle_PID + duty_cycle_min;
+	//if (duty_cycle_PID < duty_cycle_min) duty_cycle_PID = duty_cycle_min ;
+	if (duty_cycle_PID > duty_cycle_global_max ) duty_cycle_PID = duty_cycle_global_max;
+	duty_cycle_global = (uint8_t) duty_cycle_PID;
+	
+	next_angle_elec = rad_to_rad_elec(desired_position) - PI_1;
+	
+	angle_rad_elec_global = next_angle_elec;
 	
 }
 
+void drv_set_angle_rad(float32_t angle_desired)
+{
+	angle_desired_global = angle_desired;
+}
 
 
-void tcc2_sinusoidal_waveform(float32_t angle_rad_desired, uint8_t duty_cycle)
+void drv_set_angle_rad_elec(float32_t angle_desired)
+{
+	angle_rad_elec_global = angle_desired;
+}
+
+void drv_set_speed_rad(float32_t set_speed_rad)
+{
+	speed_rad_global = set_speed_rad;
+	
+	static int i = 0;
+	static float32_t next_angle_elec = 0;
+	const float32_t speed_tick = ((speed_rad_global / 7324)*7);
+	if (i >600){
+		i = 0;
+		t_step = t_step + 0.001;
+		if (t_step > speed_tick) t_step = speed_tick;
+	}
+	else i++;
+	
+	if(speed_rad_global != 0.0f) {
+		next_angle_elec = next_angle_elec + t_step;
+		if (next_angle_elec > PI_1) next_angle_elec = next_angle_elec - PI_x2;
+		else if (next_angle_elec < (-PI_1)) next_angle_elec = next_angle_elec + PI_x2;
+		angle_rad_elec_global = next_angle_elec;
+	}
+
+	
+	
+
+}
+
+void drv_set_duty_cycle(uint8_t duty_cycle)
+{
+		duty_cycle_global = duty_cycle;
+}
+
+void drv_elec_sinusoidal_waveform(float32_t angle_elec_rad_desired, uint8_t duty_cycle)
 {
 	
 	volatile q15_t sin_angle_A_Q15 = 0.0f;
@@ -78,7 +189,7 @@ void tcc2_sinusoidal_waveform(float32_t angle_rad_desired, uint8_t duty_cycle)
 	volatile q15_t sin_angle_C_Q15 = 0.0f;
 	volatile float32_t sin_angle_C_Q15f = 0.0f;
 
-	q15_t angle_q15_desired = (q15_t)(((angle_rad_desired + PI_1) / (2 * PI_1))*32768);
+	q15_t angle_q15_desired = (q15_t)(((angle_elec_rad_desired + PI_1) / (2 * PI_1))*32768);
 	const q15_t q15_120degrees = (q15_t)0x2AAB ; //120 degrees in Q15 from 0 to 1
 
 	sin_angle_A_Q15 = arm_sin_q15(angle_q15_desired);
@@ -133,18 +244,12 @@ void tcc2_sinusoidal_waveform(float32_t angle_rad_desired, uint8_t duty_cycle)
 	}
 }
 
-//! [callback_funcs]
-volatile static uint8_t duty_cycle_test_2 = 0;
-void drv_set_duty_cycle(uint8_t duty_cycle)
+
+void drv_set_ready(void)
 {
-	if ( duty_cycle> TCC0_PERIOD) duty_cycle = TCC0_PERIOD;
-	duty_cycle= TCC0_PERIOD - duty_cycle;
-	duty_cycle_test_2 = duty_cycle;
-	
-	tcc_set_compare_value(&tcc0_instance, CONF_PWM0_CHANNEL_0, duty_cycle);
-	tcc_set_compare_value(&tcc0_instance, CONF_PWM0_CHANNEL_1, duty_cycle);
-	tcc_set_compare_value(&tcc0_instance, CONF_PWM0_CHANNEL_2, duty_cycle);
+	drv_is_ready = 1;
 }
+//! [callback_funcs]
 
 //! [setup]
 void drv_tcc0_configure(void)

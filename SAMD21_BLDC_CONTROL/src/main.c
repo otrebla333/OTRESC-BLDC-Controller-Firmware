@@ -86,15 +86,8 @@
 
 #include <asf.h>
 
-#include "tlv_i2c.h"
-#include "tlv_functions.h"
+#include "bldc_control.h"
 
-#include "drv_spi.h"
-#include "drv_functions.h"
-
-#include "drv_tcc.h"
-
-#include "tlv_tc.h"
 
 
 /** Handler for the device SysTick module, called when the SysTick counter
@@ -132,56 +125,35 @@ static void config_led(void)
 uint8_t test =0;
 int main(void)
 {
-	
-	
-	
-	system_init();
-	
 
-	tlv_init();
-	tlv_i2c_configure_callbacks();
+	system_init();
 
 	system_interrupt_enable_global();
-	/*Configure system tick to generate periodic interrupts */
-	//SysTick_Config(12000000);
 
+	bldc_init();
+	//bldc_enable();
+	
 	config_led();
-	
-	drv_tcc0_configure();
-	drv_tcc2_configure();
-	drv_tcc2_configure_callbacks();
-	
-	
-
-	//drv_init();
-	
-	//tlv_tc4_configure();
-	//tlv_tc4_configure_callbacks();
 	
 	while (true) {
 		
 			/* Infinite loop */
 			if(!port_pin_get_input_level(BUTTON_0_PIN)) {
-				//! [select_slave]
-				//drv_config_pwm_mode(DRV_PWM_MODE_1INPUT);
-				//drv_enable();
-				tlv_read();
-				
-				port_pin_set_output_level(LED_0_PIN,false);
-				for (int i = 0; i<20000 ; i++);
-				//! [light_up]
+
+				LED_On(LED_0_PIN);
+				bldc_disable();
+				//bldc_enable();
+				drv_set_duty_cycle(0x4F);
+				//drv_set_speed_rad(300);
+				for (int i = 0; i<60000 ; i++);
+
 			}
 			else
 			{
-				port_pin_set_output_level(LED_0_PIN,true);
-				//port_pin_set_output_level(LED_0_PIN, drv_fault());
-				//port_pin_set_output_level(LED_0_PIN, LED0_ACTIVE);
-				//drv_disable();
-				//tlv_read();
-	
-				
-				//port_pin_set_output_level(LED_0_PIN, !test);
-				//read_tlv();
+				//bldc_disable();
+				bldc_enable();
+				LED_Off(LED_0_PIN);
+
 
 			}
 			

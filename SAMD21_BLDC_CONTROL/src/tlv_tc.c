@@ -15,9 +15,7 @@ struct tc_module tc4_instance;
 void tlv_tc_callback_to_change_duty_cycle(
 struct tc_module *const module_inst)
 {
-
 	tlv_read();
-
 }
 //! [callback_funcs]
 
@@ -67,4 +65,10 @@ void tlv_tc4_configure_callbacks(void)
 	//! [setup_enable_callback]
 	tc_enable_callback(&tc4_instance, TC_CALLBACK_CC_CHANNEL0);
 	//! [setup_enable_callback]
+}
+
+
+void tlv_tc4_disable_callbacks(void)
+{
+	tc_disable_callback(&tc4_instance, TC_CALLBACK_CC_CHANNEL0);
 }

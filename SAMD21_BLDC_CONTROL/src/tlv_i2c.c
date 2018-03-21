@@ -62,7 +62,7 @@ void tlv_i2c_configure(void)
 	config_i2c_master.pinmux_pad0    = TLV_I2C_SDA_PINMUX;
 	config_i2c_master.pinmux_pad1    = TLV_I2C_SCL_PINMUX;
 	
-	config_i2c_master.scl_low_timeout = true;
+	//config_i2c_master.scl_low_timeout = true;
 	//! [conf_change]
 
 	/* Initialize and enable device with config */
@@ -76,6 +76,8 @@ void tlv_i2c_configure(void)
 	//! [enable_module]
 	i2c_master_enable(&i2c_master_instance);
 	//! [enable_module]
+	
+	tlv_i2c_configure_callbacks();
 	
 }
 //! [initialize_i2c]
@@ -102,21 +104,21 @@ void tlv_i2c_configure_callbacks(void)
 	///* Register callback function. */
 	//! [callback_reg]
 	i2c_master_register_callback(&i2c_master_instance, tlv_i2c_read_callback,
-		(enum i2c_master_callback) (I2C_MASTER_CALLBACK_READ_COMPLETE));
+		I2C_MASTER_CALLBACK_READ_COMPLETE);
 	//! [callback_reg]
 	
 	//! [callback_reg]
-	i2c_master_register_callback(&i2c_master_instance, tlv_i2c_error_callback,
-		(enum i2c_master_callback) (I2C_MASTER_CALLBACK_ERROR));
+	//i2c_master_register_callback(&i2c_master_instance, tlv_i2c_error_callback,
+		//(enum i2c_master_callback) (I2C_MASTER_CALLBACK_ERROR));
 	//! [callback_reg]
 	
 	//! [callback_en]
 	i2c_master_enable_callback(&i2c_master_instance,
-		(enum i2c_master_callback) (I2C_MASTER_CALLBACK_READ_COMPLETE));
+		I2C_MASTER_CALLBACK_READ_COMPLETE);
 	//
-	i2c_master_enable_callback(&i2c_master_instance,
-		(enum i2c_master_callback) (I2C_MASTER_CALLBACK_ERROR));
-	//! [callback_en]
+	//i2c_master_enable_callback(&i2c_master_instance,
+		//(enum i2c_master_callback) (I2C_MASTER_CALLBACK_ERROR));
+	////! [callback_en]
 }
 
 

@@ -48,6 +48,7 @@
 #define CONF_BOARD_H_INCLUDED
 
 /* master sercom pinmux setting */
+#define I2C_MASTER_CALLBACK_MODE  true
 #define CONF_I2C_MASTER_MODULE    SERCOM5
 
 #endif /* CONF_BOARD_H_INCLUDED */

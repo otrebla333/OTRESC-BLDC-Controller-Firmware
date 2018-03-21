@@ -17,6 +17,7 @@
 #include <arm_math.h>
 
 #include "tlv_i2c.h"
+#include "tlv_tc.h"
 
 #define TLV_POWER_PIN				PIN_PB23
 #define TLV_I2C_SERCOM				SERCOM5
@@ -67,6 +68,10 @@ void tlv_calculate_angle(void);
 */
 uint8_t tlv_write (uint8_t intscl, uint8_t fast, uint8_t low, uint8_t temp, uint8_t lp_period, uint8_t array[]);
 
+/*! @brief Aligns electric angle with position sensor
+*/
+void tlv_angle_zero(void);
+
 /*! @brief Returns the angle of the shaft
 */
 float32_t tlv_angle(void);
@@ -84,6 +89,8 @@ int8_t tlv_direction(void);
 /*! @brief Returns the rev_count of the shaft
 */
 int16_t tlv_rev_count(void);
+
+void tlv_wait_revs(int16_t rev_wait);
 
 /*! @brief Faster Atan Approximation
 

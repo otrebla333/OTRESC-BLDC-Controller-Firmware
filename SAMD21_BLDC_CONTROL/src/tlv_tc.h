@@ -22,7 +22,7 @@ void tlv_tc4_configure(void);
 void tlv_tc4_configure_callbacks(void);
 void tlv_tc_callback_to_change_duty_cycle(
 	struct tc_module *const module_inst);
-
+void tlv_tc4_disable_callbacks(void);
 
 
 #endif /* TLV_TC_H_ */

@@ -19,8 +19,8 @@
 (0 << (bit))
 
 
-#	define		PIx2				6.28318531f
-#	define		PI					3.14159265f
+#	define		PI_x2				6.28318531f
+#	define		PI_1				3.14159265f
 #	define		PI_2				1.57079633f
 
 #	define		RESET_ADDRESS		0x00
@@ -30,6 +30,7 @@
 uint8_t rx_read[RX_SIZE];
 
 float32_t angle_rad=0;
+float32_t angle_rad_zero=0;
 float32_t speed_rad_2=0;
 uint8_t dir=0;
 int16_t rev_count=0;
@@ -42,10 +43,17 @@ int16_t rev_count=0;
 */
 void tlv_init(void)
 {
+
 	tlv_i2c_configure();
 	
 	tlv_reset();
+	
+	tlv_read();
 
+	tlv_tc4_configure();
+	
+	tlv_tc4_configure_callbacks();
+	
 }
 
 /*! @brief Resets the TLV Magnetic Sensor
@@ -56,6 +64,7 @@ uint8_t tlv_reset(void)
 {
 	//configure_tlv_i2c();
 	uint8_t rx_init[RX_SIZE];
+	
 	
 	tlv_i2c_write(RESET_ADDRESS, 1, 0);
 	
@@ -80,6 +89,7 @@ uint8_t tlv_reset(void)
 	
 	for(uint16_t i = 0; i < 600; i++);
 	
+	
 	//if((tlv_i2c_read(TLV_ADDRESS,RX_SIZE,rx_init))!=STATUS_OK)return 1;
 	tlv_i2c_read(TLV_ADDRESS,RX_SIZE,rx_init);
 	
@@ -93,6 +103,8 @@ uint8_t tlv_reset(void)
 	
 		
 	for(int i=0;i<60000;i++);
+	
+	//tlv_tc4_configure_callbacks();
 	
 	return 0;
 }
@@ -165,7 +177,7 @@ uint8_t tlv_check_data_sanity(void)
 */
 void tlv_calculate_angle(void)
 {
-
+	#define READ_PERIOD	0.002048f	
 	//unsigned int Temperature=0;
 	int16_t Bx=0;
 	int16_t By=0;
@@ -201,6 +213,10 @@ void tlv_calculate_angle(void)
 	static int16_t By_min=0;
 	static int16_t Bx_ant=0;
 	static int16_t By_ant=0;
+	
+	//ojo, reduciendo resolucion
+	Bx = Bx >> 4;
+	By = By >> 4;
 	
 	//Save min & max for reference
 	if ((Bx<Bx_min)&&(Bx>(-2000))) Bx_min=Bx;
@@ -242,11 +258,11 @@ void tlv_calculate_angle(void)
 	else if (y_rad<(-1.0f))y_rad=(-1.0f);
 
 	//Calculates shaft angle
-	angle_rad=ApproxAtan2(y_rad,x_rad);
+	angle_rad=(ApproxAtan2(y_rad,x_rad) - angle_rad_zero);
 
-	
-	
-	
+	if (angle_rad > PI_1) angle_rad = angle_rad - PI_x2;
+ 	else if (angle_rad < (-PI_1)) angle_rad = angle_rad + PI_x2;
+
 	static int16_t rev_count_ant=0;
 	static int16_t rev_count_ant_rev=0;
 
@@ -255,7 +271,7 @@ void tlv_calculate_angle(void)
 	//Counts revolutions in a second
 	if(i==1243){
 		i=0;
-		speed_rad_rev=(rev_count-rev_count_ant_rev)*PIx2;
+		speed_rad_rev=(rev_count-rev_count_ant_rev)*PI_x2;
 		rev_count_ant_rev=rev_count;
 	}
 	else i++;
@@ -266,7 +282,7 @@ void tlv_calculate_angle(void)
 	float32_t speed_rad=0;
 	
 	//Calculates actual speed, and averages speed every 100 measurements.
-	dif_rad=angle_rad+((rev_count-rev_count_ant)*PIx2)-angle_rad_ant;
+	dif_rad=angle_rad+((rev_count-rev_count_ant)*PI_x2)-angle_rad_ant;
 	dif_rad_sum=dif_rad+dif_rad_sum;
 	rev_count_ant=rev_count;
 	angle_rad_ant=angle_rad;
@@ -280,7 +296,7 @@ void tlv_calculate_angle(void)
 			speed_rad=0;
 			speed_rad_2=0;
 		}
-		else speed_rad_2=((dif_rad_sum)/0.2050f);
+		else speed_rad_2=((dif_rad_sum)/(READ_PERIOD*100));
 		dif_rad_sum=0;
 	}
 	else j++;
@@ -288,6 +304,15 @@ void tlv_calculate_angle(void)
 	return 0;
 }
 
+
+void tlv_angle_zero(void)
+{
+	for (int i = 0; i<60000 ; i++)
+	{
+		for (int i = 0; i<20 ; i++);
+	}
+	angle_rad_zero = angle_rad;
+}
 
 /*! @brief Returns the angle of the shaft
 */	
@@ -316,6 +341,20 @@ int8_t tlv_direction(void){
 */
 int16_t tlv_rev_count(void){
 	return rev_count;
+}
+
+
+void tlv_wait_revs(int16_t rev_wait)
+{
+	int16_t rev_count_ant = 0;
+	
+	rev_count_ant = tlv_rev_count();
+	
+	for (int j = 0; j<60000 ; j++)
+	{
+		for (int j = 0; j<1000 ; j++);
+		if((tlv_rev_count()-rev_count_ant) > rev_wait) break;
+	}
 }
 
 /*
