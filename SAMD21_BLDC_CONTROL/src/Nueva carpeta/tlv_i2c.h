@@ -34,8 +34,6 @@ void tlv_i2c_configure(void);
 
 void tlv_i2c_disable(void);
 
-void tlv_i2c_enable(void);
-
 
 /*! @brief Reads the i2c bus
 

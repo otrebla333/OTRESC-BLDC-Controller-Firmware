@@ -19,7 +19,6 @@
 #include "tlv_i2c.h"
 #include "tlv_tc.h"
 
-
 #define TLV_POWER_PIN				PIN_PB23
 #define TLV_I2C_SERCOM				SERCOM5
 #define TLV_I2C_SDA_PIN				PIN_PB16	
@@ -92,7 +91,6 @@ int8_t tlv_direction(void);
 int16_t tlv_rev_count(void);
 
 void tlv_wait_revs(int16_t rev_wait);
-
 
 /*! @brief Faster Atan Approximation
 

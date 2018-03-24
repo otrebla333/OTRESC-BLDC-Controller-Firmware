@@ -99,8 +99,8 @@ uint8_t tlv_reset(void)
 	//
 	for(uint16_t i = 0; i < 600; i++);
 	
-	//if((tlv_write(0, 1, 1, 0, 1, rx_init))!= STATUS_OK)return 1;
-	tlv_write(0,1,0,0,0,rx_init);
+	if((tlv_write(0, 1, 1, 0, 1, rx_init))!= STATUS_OK)return 1;
+	
 		
 	for(int i=0;i<60000;i++);
 	
@@ -155,11 +155,8 @@ uint8_t tlv_write (uint8_t intscl, uint8_t fast, uint8_t low, uint8_t temp, uint
 */
 void tlv_read (void)
 {
-	//if( tlv_check_data_sanity() ) tlv_reset();
- 	//tlv_i2c_read(TLV_ADDRESS,RX_SIZE,rx_read);
-	 
-	// tlv_i2c_read(TLV_ADDRESS,RX_SIZE,rx_read);
-	 tlv_i2c_read(TLV_ADDRESS,2,rx_read);
+	if( tlv_check_data_sanity() ) tlv_reset();
+ 	tlv_i2c_read(TLV_ADDRESS,RX_SIZE,rx_read);
 }
 
 /*! @brief Checks if the readout contains valid data
@@ -167,7 +164,8 @@ void tlv_read (void)
 uint8_t tlv_check_data_sanity(void)
 {
 	if ((rx_read[0] == 0) &&
-		(rx_read[1] == 0))
+		(rx_read[1] == 0) &&
+		(rx_read[2] == 0))
 		{			
 			return 1;
 		}
@@ -193,8 +191,8 @@ void tlv_calculate_angle(void)
 	static uint16_t i=0;
 	static uint16_t j=0;
 
-	/* When reading full 12 bits of magnetic field X, Y, Z 
-	Temperature=(((((RX[3]&0xF0)<<4)|RX[6])-320)*1.1);
+
+	//Temperature=(((((RX[3]&0xF0)<<4)|RX[6])-320)*1.1);
 	Bx = (rx_read[0]<<4)|(rx_read[4]>>4);
 	Bx = (Bx&0x07FF)-2048*((Bx&0x0800)>>11);
 	By = (rx_read[1]<<4)|(rx_read[4]&0x0F);
@@ -203,16 +201,10 @@ void tlv_calculate_angle(void)
 	Bz = (Bz&0x07FF)-2048*((Bz&0x0800)>>11);
 	
 	FRM = (char)(rx_read[3]&0x0C)>>2;
-	CH = (char)(RX[3]&0x03);
-	PD = (bool)(RX[5]&0x10)>>4;
+	//CH = (char)(RX[3]&0x03);
+	//PD = (bool)(RX[5]&0x10)>>4;
 	if(FRM==FRM_old) return 1;
 	else FRM_old=FRM;
-	*/
-
-	//When reading only 8 bits of magnetic field  X, Y
-	Bx = (rx_read[0]&0x7F)-128*((rx_read[0]&0x80)>>7);
-	By = (rx_read[1]&0x7F)-128*((rx_read[1]&0x80)>>7);
-	
 
 
 	static int16_t Bx_max=0;
@@ -223,14 +215,14 @@ void tlv_calculate_angle(void)
 	static int16_t By_ant=0;
 	
 	//ojo, reduciendo resolucion
-	//Bx = Bx >> 4;
-	//	By = By >> 4;
+	Bx = Bx >> 4;
+	By = By >> 4;
 	
 	//Save min & max for reference
-	if ((Bx<Bx_min)&&(Bx>(-120))) Bx_min=Bx;
-	else if ((Bx>Bx_max)&&(Bx<120))Bx_max=Bx;
-	if ((By<By_min)&&(By>(-120))) By_min=By;
-	else if ((By>By_max)&&(By<120))By_max=By;
+	if ((Bx<Bx_min)&&(Bx>(-2000))) Bx_min=Bx;
+	else if ((Bx>Bx_max)&&(Bx<2000))Bx_max=Bx;
+	if ((By<By_min)&&(By>(-2000))) By_min=By;
+	else if ((By>By_max)&&(By<2000))By_max=By;
 	
 	//Check for sign change in Y measurement, that means 1 turn completed
 	if(By==0)By=By_ant;			//Dirty fix for solving problems when By=0
@@ -308,7 +300,7 @@ void tlv_angle_zero(void)
 {
 	for (int i = 0; i<60000 ; i++)
 	{
-		for (int i = 0; i<40 ; i++);
+		for (int i = 0; i<20 ; i++);
 	}
 	angle_rad_zero = angle_rad;
 }
@@ -355,8 +347,6 @@ void tlv_wait_revs(int16_t rev_wait)
 		if((tlv_rev_count()-rev_count_ant) > rev_wait) break;
 	}
 }
-
-
 
 /*
 Source: https://www.dsprelated.com/showarticle/1052.php

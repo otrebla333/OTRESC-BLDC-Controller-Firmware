@@ -81,55 +81,78 @@ float32_t rad_to_rad_elec(float32_t angle_rad)
 
 	volatile int16_t duty_cycle_PID = 0;
 	float32_t error_rad = 0;
-	volatile static float32_t error_rad_ant = 0.0f;
+	volatile float32_t error_rad_ant = 0.0f;
 	volatile static float32_t integral_rad = 0.0f;
 	volatile float32_t derivative_rad = 0.0f;
+	volatile float32_t derivative_rad_max = 0.0f;
 	volatile float32_t next_angle_elec = 0.0f;
+	
+	float32_t position_PID = 0.0f;
 void drv_set_position_rad(float32_t desired_position)
 {
-	const float32_t Kp = 100;
-	const float32_t Kd =  10000;
-	const float32_t Ki = 0.15;
+	const float32_t Kp = 350;
+	const float32_t Kd =  1500;
+	const float32_t Ki = 0;
 	
-	const float32_t max_speed_step = 0.2f;
-	const float32_t integral_rad_max = 400;
-	const int16_t duty_cycle_min = 0x30;
+	const float32_t Kp_2 = 3;
+	const float32_t Kd_2 =  100;
+	const float32_t Ki_2 = 0;
+	
+	
+	
+	const float32_t max_speed_step = 0.3f;
+	const float32_t integral_rad_max = 20.0f;
+	const int16_t duty_cycle_min = 0x37;
+	const float32_t error_rad_tolerance = 0.01f;
+	const float32_t error_rad_elec_tolerance = 0.01f;
 
 	float32_t actual_position = tlv_angle();
 	error_rad = (desired_position - actual_position);
+	if ((error_rad < error_rad_tolerance) && (error_rad > -error_rad_tolerance)) error_rad = 0;
 	integral_rad = integral_rad + error_rad;
 	if (integral_rad > integral_rad_max) integral_rad = integral_rad_max;
 	else if (integral_rad < - integral_rad_max)  integral_rad = - integral_rad_max;
 	
 	derivative_rad = error_rad - error_rad_ant;
+	if (derivative_rad > derivative_rad_max) derivative_rad_max = derivative_rad;
+	if(derivative_rad_max > 0.4f) derivative_rad_max = 0;
 	error_rad_ant = error_rad;
+	
 	//Limits the max_step
-	if(error_rad > 0) 
-	{
-		drv_direction = 1;
-		if (error_rad > max_speed_step) desired_position = actual_position + max_speed_step;
-		else desired_position = actual_position + error_rad;
-	}
-	else if (error_rad < 0) 
-	{
-		drv_direction = -1;
-		if (error_rad < (max_speed_step * (-1))) desired_position = actual_position - max_speed_step;
-		else desired_position = actual_position + error_rad;
-	}
+	//if(error_rad > error_rad_tolerance) 
+	//{
+		//drv_direction = 1;
+		//if (error_rad > max_speed_step) desired_position = actual_position + max_speed_step;
+		//else desired_position = actual_position + error_rad;
+	//}
+	//else if (error_rad < -error_rad_tolerance) 
+	//{
+		//drv_direction = -1;
+		//if (error_rad < (max_speed_step * (-1))) desired_position = actual_position - max_speed_step;
+		//else desired_position = actual_position + error_rad;
+	//}
+	
+	
+	
+	position_PID = (error_rad *Kp_2) + (integral_rad * Ki_2) + (Kd_2 * derivative_rad);
+	if (position_PID > max_speed_step) position_PID = max_speed_step;
+	else if (position_PID < -max_speed_step) position_PID = -max_speed_step;
+	desired_position = actual_position + position_PID;
+	
 	
 	
 	//duty_cycle_PID = (int16_t)((error_rad * Kp));
-	duty_cycle_PID = (int16_t)(((error_rad * Kp) + (Kd * derivative_rad)));
-	//duty_cycle_PID = ((Kp * error_rad) + (Ki * integral_rad) + (Kd * derivative_rad));
-	
+	//duty_cycle_PID = (int16_t)((error_rad * Kp) + (Kd * derivative_rad));
+	duty_cycle_PID = ((Kp * error_rad) + (Ki * integral_rad) + (Kd * derivative_rad));
 	if (duty_cycle_PID < 0) duty_cycle_PID =  ~duty_cycle_PID;
 	duty_cycle_PID = duty_cycle_PID + duty_cycle_min;
-	//else duty_cycle_PID = duty_cycle_PID + duty_cycle_min;
-	//if (duty_cycle_PID < duty_cycle_min) duty_cycle_PID = duty_cycle_min ;
 	if (duty_cycle_PID > duty_cycle_global_max ) duty_cycle_PID = duty_cycle_global_max;
 	duty_cycle_global = (uint8_t) duty_cycle_PID;
+	//duty_cycle_global = 0x4F;
 	
 	next_angle_elec = rad_to_rad_elec(desired_position) - PI_1;
+	
+	if ((next_angle_elec > -error_rad_elec_tolerance)&&(next_angle_elec < error_rad_elec_tolerance)) next_angle_elec = 0;
 	
 	angle_rad_elec_global = next_angle_elec;
 	

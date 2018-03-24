@@ -30,12 +30,12 @@ void tlv_tc4_configure(void)
 	//! [setup_config_defaults]
 
 	config_tc4.clock_source = GCLK_GENERATOR_1;
-	config_tc4.clock_prescaler = TC_CLOCK_PRESCALER_DIV256;
+	config_tc4.clock_prescaler = TC_CLOCK_PRESCALER_DIV64;
 	//! [setup_change_config]
 	config_tc4.counter_size    = TC_COUNTER_SIZE_8BIT;
 	config_tc4.wave_generation = TC_WAVE_GENERATION_NORMAL_PWM;
-	config_tc4.counter_8_bit.period = 0x09;
-	config_tc4.counter_8_bit.compare_capture_channel[0] = 0x05;
+	config_tc4.counter_8_bit.period = 0x7F;
+	config_tc4.counter_8_bit.compare_capture_channel[0] = 0x3F;
 	//! [setup_change_config]
 
 	//! [setup_change_config_pwm]

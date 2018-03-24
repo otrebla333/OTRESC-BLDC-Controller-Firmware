@@ -57,14 +57,10 @@ void tlv_i2c_configure(void)
 	
 	/* Change baudrate and generator_source*/
 	//! [conf_change]
-	
 	config_i2c_master.baud_rate = I2C_MASTER_BAUD_RATE_400KHZ;
-	//config_i2c_master.baud_rate = I2C_MASTER_BAUD_RATE_1000KHZ;
-	//config_i2c_master.transfer_speed = I2C_MASTER_SPEED_FAST_MODE_PLUS;
 	config_i2c_master.generator_source = GCLK_GENERATOR_1;
 	config_i2c_master.pinmux_pad0    = TLV_I2C_SDA_PINMUX;
 	config_i2c_master.pinmux_pad1    = TLV_I2C_SCL_PINMUX;
-	
 	
 	//config_i2c_master.scl_low_timeout = true;
 	//! [conf_change]
@@ -88,10 +84,8 @@ void tlv_i2c_configure(void)
 
 	void tlv_i2c_read_callback(struct i2c_master_module *const module)
 {
-		//if(!tlv_check_data_sanity()) tlv_calculate_angle();
-		//else tlv_reset();
-	
 		tlv_calculate_angle();
+	
 }
 
 
@@ -112,11 +106,19 @@ void tlv_i2c_configure_callbacks(void)
 	i2c_master_register_callback(&i2c_master_instance, tlv_i2c_read_callback,
 		I2C_MASTER_CALLBACK_READ_COMPLETE);
 	//! [callback_reg]
-
+	
+	//! [callback_reg]
+	//i2c_master_register_callback(&i2c_master_instance, tlv_i2c_error_callback,
+		//(enum i2c_master_callback) (I2C_MASTER_CALLBACK_ERROR));
+	//! [callback_reg]
+	
 	//! [callback_en]
 	i2c_master_enable_callback(&i2c_master_instance,
 		I2C_MASTER_CALLBACK_READ_COMPLETE);
-
+	//
+	//i2c_master_enable_callback(&i2c_master_instance,
+		//(enum i2c_master_callback) (I2C_MASTER_CALLBACK_ERROR));
+	////! [callback_en]
 }
 
 
@@ -127,12 +129,6 @@ void tlv_i2c_disable(void)
 }
 //! [disable_i2c]
 
-//! [disable_i2c]
-void tlv_i2c_enable(void)
-{
-	i2c_master_enable(&i2c_master_instance);
-}
-//! [disable_i2c]
 
 /*! @brief Reads the i2c bus
 
@@ -148,7 +144,6 @@ static uint8_t i2c_error_flag = 0 ;
 	rd_packet.address = address;
 	rd_packet.data_length = data_size;
 	rd_packet.data = array;
-	//rd_packet.high_speed = true;
 	
 	i2c_master_read_packet_job(&i2c_master_instance, &rd_packet);
 
