@@ -1,4 +1,4 @@
-# LLM-BLDC-Controller
+# OTRESC-BLDC-Controller
 A Brushless DC motor controller with position and speed control. 
 
 - Uses a SAMD21 microcontroller.
